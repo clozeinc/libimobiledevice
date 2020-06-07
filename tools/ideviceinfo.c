@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	ret = idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX);
+	ret = idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_USBMUX | IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX);
 	if (ret != IDEVICE_E_SUCCESS) {
 		if (udid) {
 			printf("ERROR: Device %s not found!\n", udid);

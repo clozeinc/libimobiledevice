@@ -403,7 +403,7 @@ static void syslog_callback(char c, void *user_data)
 
 static int start_logging(void)
 {
-	idevice_error_t ret = idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX);
+	idevice_error_t ret = idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_USBMUX | IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX);
 	if (ret != IDEVICE_E_SUCCESS) {
 		fprintf(stderr, "Device with udid %s not found!?\n", udid);
 		return -1;
