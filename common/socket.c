@@ -726,6 +726,7 @@ int socket_check_fd(int fd, fd_mode fdm, unsigned int timeout)
 			case EAGAIN:
 				if (verbose >= 2)
 					fprintf(stderr, "%s: EAGAIN\n", __func__);
+				eagain = 1;
 				break;
 			default:
 				if (verbose >= 2)
