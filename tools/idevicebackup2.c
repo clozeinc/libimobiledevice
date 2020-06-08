@@ -811,6 +811,7 @@ static int mb2_handle_send_file(mobilebackup2_client_t mobilebackup2, const char
 	char *format_size = string_format_size(total);
 	PRINT_VERBOSE(1, "Sending '%s' (%s)\n", path, format_size);
 	free(format_size);
+    fflush(stdout);
 
 	if (total == 0) {
 		errcode = 0;
@@ -825,6 +826,7 @@ static int mb2_handle_send_file(mobilebackup2_client_t mobilebackup2, const char
 	}
 
 	sent = 0;
+
 	do {
 		length = ((total-sent) < (long long)sizeof(buf)) ? (uint32_t)total-sent : (uint32_t)sizeof(buf);
 		/* send data size (file size + 1) */
@@ -833,9 +835,11 @@ static int mb2_handle_send_file(mobilebackup2_client_t mobilebackup2, const char
 		buf[4] = CODE_FILE_DATA;
 		err = mobilebackup2_send_raw(mobilebackup2, (const char*)buf, 5, &bytes);
 		if (err != MOBILEBACKUP2_E_SUCCESS) {
+		    printf("Error sending file size '%s': %d\n", localfile, err);
 			goto leave_proto_err;
 		}
 		if (bytes != 5) {
+		    printf("Error sending file size '%s': (%d != 5)\n", localfile, bytes);
 			goto leave_proto_err;
 		}
 
@@ -848,6 +852,7 @@ static int mb2_handle_send_file(mobilebackup2_client_t mobilebackup2, const char
 		}
 		err = mobilebackup2_send_raw(mobilebackup2, buf, r, &bytes);
 		if (err != MOBILEBACKUP2_E_SUCCESS) {
+            printf("Error sending file block '%s': %d (%lld)\n", localfile, err, sent);
 			goto leave_proto_err;
 		}
 		if (bytes != (uint32_t)r) {
@@ -922,7 +927,13 @@ static void mb2_handle_send_files(mobilebackup2_client_t mobilebackup2, plist_t 
 
 		if (mb2_handle_send_file(mobilebackup2, backup_dir, str, &errplist) < 0) {
 			free(str);
-			//printf("Error when sending file '%s' to device\n", str);
+			printf("Error when sending file '%s' to device\n", str);
+
+			if(errplist)
+			    plist_print_to_stream(errplist, stdout);
+
+            fflush(stdout);
+
 			// TODO: perhaps we can continue, we've got a multi status response?!
 			break;
 		}

@@ -230,12 +230,16 @@ LIBIMOBILEDEVICE_API mobilebackup2_error_t mobilebackup2_send_raw(mobilebackup2_
 
 	int bytes_loc = 0;
 	uint32_t sent = 0;
+	int loops = 0;
 	do {
 		bytes_loc = 0;
-		service_send(raw, data+sent, length-sent, (uint32_t*)&bytes_loc);
-		if (bytes_loc <= 0)
+		int status = service_send(raw, data+sent, length-sent, (uint32_t*)&bytes_loc);
+		if (bytes_loc <= 0) {
+		    printf("Raw send error %d (loops=%d)\n", status, loops);
 			break;
+		}
 		sent += bytes_loc;
+		loops++;
 	} while (sent < length);
 	if (sent > 0) {
 		*bytes = sent;
