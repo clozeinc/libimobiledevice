@@ -665,9 +665,9 @@ static void print_progress_real(double progress, int flush)
 	PRINT_VERBOSE(1, "] %3.0f%%", progress);
 
 	if (flush > 0) {
-		fflush(stdout);
 		if (progress == 100)
 			PRINT_VERBOSE(1, "\n");
+		fflush(stdout);
 	}
 }
 
@@ -681,7 +681,7 @@ static void print_progress(uint64_t current, uint64_t total)
 	if (progress > 100)
 		progress = 100;
 
-	print_progress_real((double)progress, 0);
+	print_progress_real((double)progress, 1);
 
 	format_size = string_format_size(current);
 	PRINT_VERBOSE(1, " (%s", format_size);
@@ -690,9 +690,10 @@ static void print_progress(uint64_t current, uint64_t total)
 	PRINT_VERBOSE(1, "/%s)     ", format_size);
 	free(format_size);
 
-	fflush(stdout);
 	if (progress == 100)
 		PRINT_VERBOSE(1, "\n");
+
+	fflush(stdout);
 }
 
 static double overall_progress = 0;
@@ -2270,6 +2271,7 @@ checkpoint:
 					plist_t moves = plist_array_get_item(message, 1);
 					uint32_t cnt = plist_dict_get_size(moves);
 					PRINT_VERBOSE(1, "Moving %d file%s\n", cnt, (cnt == 1) ? "" : "s");
+					fflush(stdout);
 					plist_dict_iter iter = NULL;
 					plist_dict_new_iter(moves, &iter);
 					errcode = 0;
@@ -2321,6 +2323,7 @@ checkpoint:
 					plist_t removes = plist_array_get_item(message, 1);
 					uint32_t cnt = plist_array_get_size(removes);
 					PRINT_VERBOSE(1, "Removing %d file%s\n", cnt, (cnt == 1) ? "" : "s");
+                    fflush(stdout);
 					uint32_t ii = 0;
 					errcode = 0;
 					errdesc = NULL;
@@ -2376,6 +2379,7 @@ checkpoint:
 							char *newpath = string_build_path(backup_directory, dst, NULL);
 
 							PRINT_VERBOSE(1, "Copying '%s' to '%s'\n", src, dst);
+                            fflush(stdout);
 
 							/* check that src exists */
 							if ((stat(oldpath, &st) == 0) && S_ISDIR(st.st_mode)) {
@@ -2448,8 +2452,9 @@ checkpoint:
 					if (overall_progress >= 100.0f) {
 						progress_finished = 1;
 					}
-					print_progress_real(overall_progress, 0);
+					print_progress_real(overall_progress, 1);
 					PRINT_VERBOSE(1, " Finished\n");
+					fflush(stdout);
 				}
 
 files_out:
