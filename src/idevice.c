@@ -47,6 +47,8 @@
 
 #ifdef WIN32
 #include <windows.h>
+#elif AF_INET6
+#define SUPPORTS_INET6
 #endif
 
 #ifndef ETIMEDOUT
@@ -444,7 +446,7 @@ LIBIMOBILEDEVICE_API idevice_error_t idevice_connect(idevice_t device, uint16_t 
 			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 14);
 		}
 		else if (((char*)device->conn_data)[1] == 0x1E) { // AF_INET6 (bsd)
-#ifdef AF_INET6
+#ifdef SUPPORTS_INET6
 			saddr->sa_family = AF_INET6;
 			/* copy the address and the host dependent scope id */
 			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 26);

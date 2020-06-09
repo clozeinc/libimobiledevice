@@ -44,6 +44,7 @@ static int wsa_init = 0;
 #include <arpa/inet.h>
 #include <fcntl.h>
 #ifdef AF_INET6
+#define SUPPORTS_INET6
 #include <net/if.h>
 #include <ifaddrs.h>
 #endif
@@ -87,7 +88,7 @@ const char *socket_addr_to_string(struct sockaddr *addr, char *addr_out, size_t 
 	if (addr->sa_family == AF_INET) {
 		addrlen = sizeof(struct sockaddr_in);
 	}
-#ifdef AF_INET6
+#ifdef SUPPORTS_INET6
 	else if (addr->sa_family == AF_INET6) {
 		addrlen = sizeof(struct sockaddr_in6);
 	}
@@ -106,7 +107,7 @@ const char *socket_addr_to_string(struct sockaddr *addr, char *addr_out, size_t 
 	if (addr->sa_family == AF_INET) {
 		addrdata = &((struct sockaddr_in*)addr)->sin_addr;
 	}
-#ifdef AF_INET6
+#ifdef SUPPORTS_INET6
 	else if (addr->sa_family == AF_INET6) {
 		addrdata = &((struct sockaddr_in6*)addr)->sin6_addr;
 	}
@@ -314,7 +315,7 @@ int socket_create(uint16_t port)
 	return sfd;
 }
 
-#ifdef AF_INET6
+#ifdef SUPPORTS_INET6
 static uint32_t _in6_addr_scope(struct in6_addr* addr)
 {
 	uint32_t scope = 0;
@@ -446,7 +447,7 @@ int socket_connect_addr(struct sockaddr* addr, uint16_t port)
 		addr_in->sin_port = htons(port);
 		addrlen = sizeof(struct sockaddr_in);
 	}
-#ifdef AF_INET6
+#ifdef SUPPORTS_INET6
 	else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6* addr_in = (struct sockaddr_in6*)addr;
 		addr_in->sin6_port = htons(port);
