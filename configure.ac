@@ -32,8 +32,8 @@ AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
 
 # Checks for libraries.
-PKG_CHECK_MODULES(libusbmuxd, libusbmuxd >= $LIBUSBMUXD_VERSION)
-PKG_CHECK_MODULES(libplist, libplist >= $LIBPLIST_VERSION)
+PKG_CHECK_MODULES(libusbmuxd, libusbmuxd-2.0 >= $LIBUSBMUXD_VERSION)
+PKG_CHECK_MODULES(libplist, libplist-2.0 >= $LIBPLIST_VERSION)
 
 # Checks for header files.
 AC_HEADER_STDC
