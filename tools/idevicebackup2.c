@@ -802,6 +802,9 @@ static int mb2_handle_send_file(mobilebackup2_client_t mobilebackup2, const char
 	{
 		if (errno != ENOENT)
 			printf("%s: stat failed on '%s': %d\n", __func__, localfile, errno);
+        else
+            result = -ENOENT;
+
 		errcode = errno;
 		goto leave;
 	}
@@ -925,18 +928,25 @@ static void mb2_handle_send_files(mobilebackup2_client_t mobilebackup2, plist_t 
 		if (!str)
 			continue;
 
-		if (mb2_handle_send_file(mobilebackup2, backup_dir, str, &errplist) < 0) {
+        int errCode = mb2_handle_send_file(mobilebackup2, backup_dir, str, &errplist);
+
+		if (errCode < 0) {
 			free(str);
-			printf("Error when sending file '%s' to device\n", str);
 
-			if(errplist)
-			    plist_print_to_stream(errplist, stdout);
+			if(errCode != -ENOENT)
+            {
+    			printf("Error when sending file '%s' to device (%d)\n", str, errCode);
 
-            fflush(stdout);
+                if(errplist)
+                    plist_print_to_stream(errplist, stdout);
+
+                fflush(stdout);
+            }
 
 			// TODO: perhaps we can continue, we've got a multi status response?!
 			break;
 		}
+
 		free(str);
 	}
 
@@ -1028,7 +1038,7 @@ static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_
 		plist_get_uint_val(node, &backup_total_size);
 	}
 	if (backup_total_size > 0) {
-		PRINT_VERBOSE(1, "Receiving files\n");
+		PRINT_VERBOSE(2, "Receiving files\n");
 	}
 
 	do {
