@@ -456,7 +456,17 @@ LIBIMOBILEDEVICE_API idevice_error_t idevice_connect(idevice_t device, uint16_t 
 #endif
 		}
 		else {
-			debug_info("Unsupported address family 0x%02x", ((char*)device->conn_data)[1]);
+			printf("ERROR Unsupported address family 0x%02x", ((char*)device->conn_data)[1]);
+
+			char strbuf[601];
+            strbuf[600] = 0;
+
+            for(int j = 0; j < 200; j++)
+                sprintf(&strbuf[2*j], "%02X ", ((unsigned char*)device->conn_data)[j]);
+
+            printf("Connection data:\n%s\n", strbuf);
+            fflush(stdout);
+
 			return IDEVICE_E_UNKNOWN_ERROR;
 		}
 
