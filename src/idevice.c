@@ -47,8 +47,6 @@
 
 #ifdef WIN32
 #include <windows.h>
-#elif AF_INET6
-#define SUPPORTS_INET6
 #endif
 
 #ifndef ETIMEDOUT
@@ -446,7 +444,7 @@ LIBIMOBILEDEVICE_API idevice_error_t idevice_connect(idevice_t device, uint16_t 
 			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 14);
 		}
 		else if (((char*)device->conn_data)[1] == 0x1E) { // AF_INET6 (bsd)
-#ifdef SUPPORTS_INET6
+#ifdef AF_INET6
 			saddr->sa_family = AF_INET6;
 			/* copy the address and the host dependent scope id */
 			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 26);
@@ -456,18 +454,26 @@ LIBIMOBILEDEVICE_API idevice_error_t idevice_connect(idevice_t device, uint16_t 
 #endif
 		}
 		else {
-			printf("ERROR Unsupported address family 0x%02x", ((char*)device->conn_data)[1]);
+			printf("WARNING Unsupported address family 0x%02x\n", ((char*)device->conn_data)[1]);
 
-			char strbuf[601];
-            strbuf[600] = 0;
+#ifdef AF_INET6
+			saddr->sa_family = AF_INET6;
+			/* copy the address and the host dependent scope id */
+			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 26);
 
-            for(int j = 0; j < 200; j++)
-                sprintf(&strbuf[2*j], "%02X ", ((unsigned char*)device->conn_data)[j]);
+		    char addrtxt[48];
+		    addrtxt[0] = '\0';
 
-            printf("Connection data:\n%s\n", strbuf);
-            fflush(stdout);
-
+            if (!socket_addr_to_string(saddr, addrtxt, sizeof(addrtxt))) {
+    			return IDEVICE_E_UNKNOWN_ERROR;
+            } else {
+                printf("Falling back to AF_INET6: %s\n", addrtxt);
+                fflush(stdout);
+            }
+#else
+			debug_info("ERROR: Got an IPv6 address but this system doesn't support IPv6");
 			return IDEVICE_E_UNKNOWN_ERROR;
+#endif
 		}
 
 		char addrtxt[48];

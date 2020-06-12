@@ -34,6 +34,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <iphlpapi.h>
 static int wsa_init = 0;
 #else
 #include <sys/socket.h>
@@ -44,7 +45,6 @@ static int wsa_init = 0;
 #include <arpa/inet.h>
 #include <fcntl.h>
 #ifdef AF_INET6
-#define SUPPORTS_INET6
 #include <net/if.h>
 #include <ifaddrs.h>
 #endif
@@ -88,7 +88,7 @@ const char *socket_addr_to_string(struct sockaddr *addr, char *addr_out, size_t 
 	if (addr->sa_family == AF_INET) {
 		addrlen = sizeof(struct sockaddr_in);
 	}
-#ifdef SUPPORTS_INET6
+#ifdef AF_INET6
 	else if (addr->sa_family == AF_INET6) {
 		addrlen = sizeof(struct sockaddr_in6);
 	}
@@ -107,7 +107,7 @@ const char *socket_addr_to_string(struct sockaddr *addr, char *addr_out, size_t 
 	if (addr->sa_family == AF_INET) {
 		addrdata = &((struct sockaddr_in*)addr)->sin_addr;
 	}
-#ifdef SUPPORTS_INET6
+#ifdef AF_INET6
 	else if (addr->sa_family == AF_INET6) {
 		addrdata = &((struct sockaddr_in6*)addr)->sin6_addr;
 	}
@@ -315,7 +315,7 @@ int socket_create(uint16_t port)
 	return sfd;
 }
 
-#ifdef SUPPORTS_INET6
+#ifdef AF_INET6
 static uint32_t _in6_addr_scope(struct in6_addr* addr)
 {
 	uint32_t scope = 0;
@@ -345,6 +345,93 @@ static uint32_t _in6_addr_scope(struct in6_addr* addr)
 	return scope;
 }
 
+#ifdef WIN32
+static int32_t _sockaddr_in6_scope_id(struct sockaddr_in6* addr)
+{
+	int32_t res = -1;
+	uint32_t addr_scope;
+
+	/* get scope for requested address */
+	addr_scope = _in6_addr_scope(&addr->sin6_addr);
+	if (addr_scope == 0) {
+		/* global scope doesn't need a specific scope id */
+		return addr_scope;
+	}
+
+    // Allocate a 15 KB buffer to start with.
+    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+    ULONG outBufLen = 15000;
+
+    int tries = 0;
+    DWORD dwRetVal = 0;
+
+    do {
+        pAddresses = (IP_ADAPTER_ADDRESSES *) malloc(outBufLen);
+
+        if (pAddresses == NULL) {
+            printf("Memory allocation failed for IP_ADAPTER_ADDRESSES struct\n");
+            free(pAddresses);
+            return res;
+        }
+
+        dwRetVal = GetAdaptersAddresses(AF_INET6, GAA_FLAG_INCLUDE_PREFIX, NULL, pAddresses, &outBufLen);
+
+        if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+            free(pAddresses);
+            pAddresses = NULL;
+        } else {
+            break;
+        }
+
+        tries++;
+
+    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (tries < 3));
+
+    if (dwRetVal != NO_ERROR) {
+        return res;
+    }
+
+    for (PIP_ADAPTER_ADDRESSES cur = pAddresses; cur != NULL; cur = cur->Next) {
+        PIP_ADAPTER_UNICAST_ADDRESS unicast = cur->FirstUnicastAddress;
+
+        if ((unicast != NULL) && (unicast->Address.lpSockaddr->sa_family == AF_INET6)) {
+            struct sockaddr_in6 *addr_in = (struct sockaddr_in6 *)unicast->Address.lpSockaddr;
+
+            /* skip if scopes do not match */
+            if (_in6_addr_scope(&addr_in->sin6_addr) != addr_scope) {
+                continue;
+            }
+
+            /* use if address is equal */
+            if (memcmp(&addr->sin6_addr.s6_addr, &addr_in->sin6_addr.s6_addr, sizeof(addr_in->sin6_addr.s6_addr)) == 0) {
+                res = addr_in->sin6_scope_id;
+                /* if scope id equals the requested one then assume it was valid */
+                if (addr->sin6_scope_id == addr_in->sin6_scope_id) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+
+            /* skip loopback interface if not already matched exactly above */
+            if (cur->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
+                continue;
+            }
+
+            /* set the scope id of this interface as most likely candidate */
+            res = addr_in->sin6_scope_id;
+
+            /* if scope id equals the requested one then assume it was valid */
+            if (addr->sin6_scope_id == addr_in->sin6_scope_id) {
+                break;
+            }
+        }
+    }
+
+    free(pAddresses);
+    return res;
+}
+#else
 static int32_t _sockaddr_in6_scope_id(struct sockaddr_in6* addr)
 {
 	int32_t res = -1;
@@ -423,6 +510,7 @@ static int32_t _sockaddr_in6_scope_id(struct sockaddr_in6* addr)
 	return res;
 }
 #endif
+#endif
 
 int socket_connect_addr(struct sockaddr* addr, uint16_t port)
 {
@@ -447,7 +535,7 @@ int socket_connect_addr(struct sockaddr* addr, uint16_t port)
 		addr_in->sin_port = htons(port);
 		addrlen = sizeof(struct sockaddr_in);
 	}
-#ifdef SUPPORTS_INET6
+#ifdef AF_INET6
 	else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6* addr_in = (struct sockaddr_in6*)addr;
 		addr_in->sin6_port = htons(port);
@@ -462,7 +550,6 @@ int socket_connect_addr(struct sockaddr* addr, uint16_t port)
 		 * fail. An IPv6 guru should have another look though...
 		 */
 		addr_in->sin6_scope_id = _sockaddr_in6_scope_id(addr_in);
-
 		addrlen = sizeof(struct sockaddr_in6);
 	}
 #endif
