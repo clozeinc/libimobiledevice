@@ -455,25 +455,7 @@ LIBIMOBILEDEVICE_API idevice_error_t idevice_connect(idevice_t device, uint16_t 
 		}
 		else {
 			printf("WARNING Unsupported address family 0x%02x\n", ((char*)device->conn_data)[1]);
-
-#ifdef AF_INET6
-			saddr->sa_family = AF_INET6;
-			/* copy the address and the host dependent scope id */
-			memcpy(&saddr->sa_data[0], (char*)device->conn_data + 2, 26);
-
-		    char addrtxt[48];
-		    addrtxt[0] = '\0';
-
-            if (!socket_addr_to_string(saddr, addrtxt, sizeof(addrtxt))) {
-    			return IDEVICE_E_UNKNOWN_ERROR;
-            } else {
-                printf("Falling back to AF_INET6: %s\n", addrtxt);
-                fflush(stdout);
-            }
-#else
-			debug_info("ERROR: Got an IPv6 address but this system doesn't support IPv6");
 			return IDEVICE_E_UNKNOWN_ERROR;
-#endif
 		}
 
 		char addrtxt[48];
