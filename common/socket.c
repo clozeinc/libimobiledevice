@@ -394,37 +394,49 @@ static int32_t _sockaddr_in6_scope_id(struct sockaddr_in6* addr)
     for (PIP_ADAPTER_ADDRESSES cur = pAddresses; cur != NULL; cur = cur->Next) {
         PIP_ADAPTER_UNICAST_ADDRESS unicast = cur->FirstUnicastAddress;
 
-        if ((unicast != NULL) && (unicast->Address.lpSockaddr->sa_family == AF_INET6)) {
-            struct sockaddr_in6 *addr_in = (struct sockaddr_in6 *)unicast->Address.lpSockaddr;
+        if ((unicast == NULL) || (unicast->Address.lpSockaddr->sa_family != AF_INET6)) {
+            continue;
+        }
 
-            /* skip if scopes do not match */
-            if (_in6_addr_scope(&addr_in->sin6_addr) != addr_scope) {
-                continue;
-            }
+        struct sockaddr_in6 *addr_in = (struct sockaddr_in6 *)unicast->Address.lpSockaddr;
 
-            /* use if address is equal */
-            if (memcmp(&addr->sin6_addr.s6_addr, &addr_in->sin6_addr.s6_addr, sizeof(addr_in->sin6_addr.s6_addr)) == 0) {
-                res = addr_in->sin6_scope_id;
-                /* if scope id equals the requested one then assume it was valid */
-                if (addr->sin6_scope_id == addr_in->sin6_scope_id) {
-                    break;
-                } else {
-                    continue;
-                }
-            }
+        /* skip if scopes do not match */
+        if (_in6_addr_scope(&addr_in->sin6_addr) != addr_scope) {
+            continue;
+        }
 
-            /* skip loopback interface if not already matched exactly above */
-            if (cur->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
-                continue;
-            }
-
-            /* set the scope id of this interface as most likely candidate */
-            res = addr_in->sin6_scope_id;
-
+        /* use if address is equal */
+        if (memcmp(&addr->sin6_addr.s6_addr, &addr_in->sin6_addr.s6_addr, sizeof(addr_in->sin6_addr.s6_addr)) == 0) {
             /* if scope id equals the requested one then assume it was valid */
             if (addr->sin6_scope_id == addr_in->sin6_scope_id) {
+                res = addr_in->sin6_scope_id;
                 break;
+            } else {
+                if ((addr_in->sin6_scope_id > addr->sin6_scope_id) && (res >= 0)) {
+                    // use last valid scope id as we're past the requested scope id
+                    break;
+                }
+                res = addr_in->sin6_scope_id;
+                continue;
             }
+        }
+
+        /* skip loopback interface if not already matched exactly above */
+        if (cur->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
+            continue;
+        }
+
+        if ((addr_in->sin6_scope_id > addr->sin6_scope_id) && (res >= 0)) {
+            // use last valid scope id as we're past the requested scope id
+            break;
+        }
+
+        res = addr_in->sin6_scope_id;
+
+        /* if scope id equals the requested one then assume it was valid */
+        if (addr->sin6_scope_id == addr_in->sin6_scope_id) {
+            /* set the scope id of this interface as most likely candidate */
+            break;
         }
     }
 
