@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.64)
-AC_INIT([libimobiledevice], [1.2.1], [https://github.com/libimobiledevice/libimobiledevice/issues],, [https://libimobiledevice.org])
+AC_INIT([libimobiledevice], [1.3.0], [https://github.com/libimobiledevice/libimobiledevice/issues],, [https://libimobiledevice.org])
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip check-news])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AC_CONFIG_SRCDIR([src/])
@@ -18,8 +18,8 @@ dnl libtool versioning
 LIBIMOBILEDEVICE_SO_VERSION=6:0:0
 
 dnl Minimum package versions
-LIBUSBMUXD_VERSION=2.0.1
-LIBPLIST_VERSION=2.1.0
+LIBUSBMUXD_VERSION=2.0.2
+LIBPLIST_VERSION=2.2.0
 
 AC_SUBST(LIBIMOBILEDEVICE_SO_VERSION)
 AC_SUBST(LIBUSBMUXD_VERSION)
@@ -126,7 +126,7 @@ else
 fi
 if [test "x$CYTHON" != "xfalse"]; then
             AC_MSG_CHECKING([for libplist Cython bindings])
-            CYTHON_PLIST_INCLUDE_DIR=$($PKG_CONFIG --variable=includedir libplist)/plist/cython
+            CYTHON_PLIST_INCLUDE_DIR=$($PKG_CONFIG --variable=includedir libplist-2.0)/plist/cython
             if [test ! -d "$CYTHON_PLIST_INCLUDE_DIR"]; then
                 CYTHON=false
                 CYTHON_SUB=

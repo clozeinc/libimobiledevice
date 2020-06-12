@@ -1,9 +1,43 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/include \
+	-I$(top_srcdir)
 
-AM_CFLAGS = $(GLOBAL_CFLAGS) $(libgnutls_CFLAGS) $(libtasn1_CFLAGS) $(libgcrypt_CFLAGS) $(openssl_CFLAGS) $(libplist_CFLAGS) $(LFS_CFLAGS)
-AM_LDFLAGS = $(libgnutls_LIBS) $(libtasn1_LIBS) $(libgcrypt_LIBS) $(openssl_LIBS) $(libplist_LIBS)
+AM_CFLAGS = \
+	$(GLOBAL_CFLAGS) \
+	$(libgnutls_CFLAGS) \
+	$(libtasn1_CFLAGS) \
+	$(libgcrypt_CFLAGS) \
+	$(openssl_CFLAGS) \
+	$(libplist_CFLAGS) \
+	$(LFS_CFLAGS)
 
-bin_PROGRAMS = idevice_id ideviceinfo idevicewifi idevicename idevicepair idevicesyslog ideviceimagemounter idevicescreenshot ideviceenterrecovery idevicedate idevicebackup idevicebackup2 ideviceprovision idevicedebugserverproxy idevicediagnostics idevicedebug idevicenotificationproxy idevicecrashreport idevicesetlocation
+AM_LDFLAGS = \
+	$(libgnutls_LIBS) \
+	$(libtasn1_LIBS) \
+	$(libgcrypt_LIBS) \
+	$(openssl_LIBS) \
+	$(libplist_LIBS)
+
+bin_PROGRAMS = \
+	idevice_id \
+	ideviceinfo \
+	idevicename \
+	idevicepair \
+	idevicesyslog \
+	ideviceimagemounter \
+	idevicescreenshot \
+	ideviceenterrecovery \
+	idevicedate \
+	idevicebackup \
+	idevicebackup2 \
+	ideviceprovision \
+	idevicedebugserverproxy \
+	idevicediagnostics \
+	idevicedebug \
+	idevicenotificationproxy \
+	idevicecrashreport \
+	idevicesetlocation \
+	idevicewifi
 
 ideviceinfo_SOURCES = ideviceinfo.c
 ideviceinfo_CFLAGS = $(AM_CFLAGS)
