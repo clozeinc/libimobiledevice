@@ -42,7 +42,7 @@ static void print_usage(void)
 {
 	printf("Usage: idevicewifi [OPTIONS] [ENABLE]\n");
 	printf("\n");
-	printf("Display the EnableWifiConnections vulue or set it to ENABLE if specified.\n");
+	printf("Display the EnableWifiConnections value or sets it to ENABLE if specified (ENABLE can be 'true' or 'false').\n");
 	printf("\n");
 	printf("OPTIONS:\n");
 	printf("  -u, --udid UDID\ttarget specific device by UDID\n");
@@ -111,6 +111,24 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	int enable = 1;
+	int change = 0;
+
+    if(argc != 0) {
+        // setting device property
+
+        if(strcmp(argv[0], "true") == 0) {
+            enable = 1;
+        } else if(strcmp(argv[0], "false") == 0) {
+            enable = 0;
+        } else {
+            print_usage();
+            return -1;
+        }
+
+        change = 1;
+    }
+
 	idevice_t device = NULL;
 	if (idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_USBMUX | IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX) != IDEVICE_E_SUCCESS) {
 		if (udid) {
@@ -132,41 +150,41 @@ int main(int argc, char** argv)
 	plist_t node = NULL;
 	lerr = lockdownd_get_value(lockdown, "com.apple.mobile.wireless_lockdown", "EnableWifiConnections", &node);
 
-     if(lerr == LOCKDOWN_E_SUCCESS && node) {
+    int enabled = 0;
+
+    if(lerr == LOCKDOWN_E_SUCCESS && node) {
         uint8_t b;
         plist_get_bool_val(node, &b);
         plist_free(node);
         node = NULL;
 
-        if(argc != 0) {
-            // setting device property
-            int enabled = strcmp(argv[0], "true") == 0;
+        enabled = b;
 
-            if(enabled != b) {
-                lerr = lockdownd_set_value(lockdown, "com.apple.mobile.wireless_lockdown", "EnableWifiConnections", plist_new_bool(enabled));
-
-                if (lerr == LOCKDOWN_E_SUCCESS) {
-                    res = 0;
-                } else {
-                    fprintf(stderr, "ERROR: Could not set property, lockdown error %d\n", lerr);
-                }
-
-                b = enabled;
-            } else {
-                res = 0;
-            }
-        } else {
-            res = 0;
+        if(enable == enabled) {
+            // Value has not changed
+            change = 0;
         }
 
-        printf("EnableWifiConnections: %s\n", b ? "true" : "false");
+        res = 0;
     } else {
-        fprintf(stderr, "ERROR: Could not get property, lockdown error %d\n", lerr);
+        printf("WARNING: Could not get property, lockdown error %d\n", lerr);
     }
 
-	if (argc == 0) {
-	} else {
-	}
+    if(change) {
+        lerr = lockdownd_set_value(lockdown, "com.apple.mobile.wireless_lockdown", "EnableWifiConnections", plist_new_bool(enable));
+
+        if (lerr == LOCKDOWN_E_SUCCESS) {
+            res = 0;
+            enabled = enable;
+        } else {
+            fprintf(stderr, "ERROR: Could not set property, lockdown error %d\n", lerr);
+            res = -1;
+        }
+    }
+
+    if(res == 0) {
+        printf("EnableWifiConnections: %s\n", enabled ? "true" : "false");
+    }
 
 	lockdownd_client_free(lockdown);
 	idevice_free(device);
