@@ -665,8 +665,6 @@ static void print_progress_real(double progress, int flush)
 	PRINT_VERBOSE(1, "] %3.0f%%", progress);
 
 	if (flush > 0) {
-		if (progress == 100)
-			PRINT_VERBOSE(1, "\n");
 		fflush(stdout);
 	}
 }
@@ -681,7 +679,7 @@ static void print_progress(uint64_t current, uint64_t total)
 	if (progress > 100)
 		progress = 100;
 
-	print_progress_real((double)progress, 1);
+	print_progress_real((double)progress, 0);
 
 	format_size = string_format_size(current);
 	PRINT_VERBOSE(1, " (%s", format_size);
@@ -830,6 +828,7 @@ static int mb2_handle_send_file(mobilebackup2_client_t mobilebackup2, const char
 	}
 
 	sent = 0;
+    print_progress(sent, total);
 
 	do {
 		length = ((total-sent) < (long long)sizeof(buf)) ? (uint32_t)total-sent : (uint32_t)sizeof(buf);
@@ -864,6 +863,9 @@ static int mb2_handle_send_file(mobilebackup2_client_t mobilebackup2, const char
 			goto leave_proto_err;
 		}
 		sent += r;
+
+		print_progress(sent, total);
+
 	} while (sent < total);
 	fclose(f);
 	f = NULL;
