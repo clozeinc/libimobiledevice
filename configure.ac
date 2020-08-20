@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.64)
-AC_INIT([libimobiledevice], [1.3.0], [https://github.com/libimobiledevice/libimobiledevice/issues],, [https://libimobiledevice.org])
+AC_INIT([libimobiledevice], [1.3.1], [https://github.com/libimobiledevice/libimobiledevice/issues],, [https://libimobiledevice.org])
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip check-news])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AC_CONFIG_SRCDIR([src/])
@@ -81,50 +81,32 @@ case ${host_os} in
 esac
 AM_CONDITIONAL(WIN32, test x$win32 = xtrue)
 
-AC_SUBST(libusbmuxd_CFLAGS)
-AC_SUBST(libusbmuxd_LIBS)
-AC_SUBST(libplist_CFLAGS)
-AC_SUBST(libplist_LIBS)
-
-CACHED_CFLAGS="$CFLAGS"
-CFLAGS+=" $libusbmuxd_CFLAGS $libplist_CFLAGS"
-CACHED_LDFLAGS="$LDFLAGS"
-LDFLAGS+=" $libusbmuxd_LIBS $libplist_LIBS"
-
-AC_CHECK_MEMBER(usbmuxd_device_info_t.conn_type,, AC_MSG_ERROR([libusbmuxd (usbmuxd.h) is not up-to-date; missing conn_type member in usbmuxd_device_info_t. Please update libusbmuxd to build $PACKAGE_NAME]), [#include <usbmuxd.h>])
-AC_TRY_COMPILE([
-  #include <usbmuxd.h>
-], [
-  enum usbmux_connection_type conntypeusb = CONNECTION_TYPE_USB;
-  enum usbmux_connection_type conntypenet = CONNECTION_TYPE_NETWORK;
-],, AC_MSG_ERROR([[libusbmuxd (usbmuxd.h) is not up-to-date; missing enum usbmux_connection_type with CONNECTION_TYPE_USB and CONNECTION_TYPE_NETWORK - Please update libusbmuxd to build $PACKAGE_NAME]]))
-AC_TRY_COMPILE([
-  #include <usbmuxd.h>
-], [
-  enum usbmux_lookup_options opts = DEVICE_LOOKUP_USBMUX | DEVICE_LOOKUP_NETWORK | DEVICE_LOOKUP_PREFER_NETWORK;
-],, AC_MSG_ERROR([[libusbmuxd (usbmuxd.h) is not up-to-date; missing enum usbmux_lookup_options with DEVICE_LOOKUP_USBMUX, DEVICE_LOOKUP_NETWORK, and DEVICE_LOOKUP_PREFER_NETWORK - Please update libusbmuxd to build $PACKAGE_NAME]]))
-
-AC_CHECK_LIB([plist], [plist_string_val_compare],, [AC_MSG_ERROR([[libplist is not up-to-date; missing plist_string_val_compare() etc. functions - Please update libplist to build $PACKAGE_NAME]])])
-
-CFLAGS="$CACHED_CFLAGS"
-LDFLAGS="$CACHED_LDFLAGS"
-
 AC_CHECK_MEMBER(struct dirent.d_type, AC_DEFINE(HAVE_DIRENT_D_TYPE, 1, [define if struct dirent has member d_type]),, [#include <dirent.h>])
 
 # Cython Python Bindings
 AC_ARG_WITH([cython],
             [AS_HELP_STRING([--without-cython],
             [build Python bindings using Cython (default is yes)])],
-            [build_cython=$withval],
-            [build_cython=yes])
-if test "$build_cython" = "yes"; then
-            AM_PATH_PYTHON(2.3)
-            AC_PROG_CYTHON(0.17.0)
-            CYTHON_PYTHON
+            [build_cython=false],
+            [build_cython=true])
+if test "$build_cython" = "true"; then
+            AC_PROG_CYTHON([0.17.0])
+            if [test "x$CYTHON" != "xfalse"]; then
+              AM_PATH_PYTHON([2.3], [
+                CYTHON_PYTHON
+                AS_COMPILER_FLAG([-Wno-cast-function-type -Werror], [
+                  CYTHON_CFLAGS+=" -Wno-cast-function-type"
+                  AC_SUBST([CYTHON_CFLAGS])
+                ], [])
+              ])
+            else
+              AC_MSG_WARN([Use the "--without-cython" option to avoid this warning.])
+            fi
 else
             CYTHON=false
 fi
 if [test "x$CYTHON" != "xfalse"]; then
+            PKG_PROG_PKG_CONFIG
             AC_MSG_CHECKING([for libplist Cython bindings])
             CYTHON_PLIST_INCLUDE_DIR=$($PKG_CONFIG --variable=includedir libplist-2.0)/plist/cython
             if [test ! -d "$CYTHON_PLIST_INCLUDE_DIR"]; then
@@ -132,7 +114,7 @@ if [test "x$CYTHON" != "xfalse"]; then
                 CYTHON_SUB=
                 cython_python_bindings=no
                 AC_MSG_RESULT([no])
-                AC_MSG_WARN([cannot find libplist Cython bindings. You should install your distribution specific libplist Cython bindings package.])
+                AC_MSG_WARN([Unable to find libplist Cython bindings. You should install your distribution specific libplist Cython bindings package.])
             else
                 AC_SUBST([CYTHON_PLIST_INCLUDE_DIR])
                 AC_MSG_RESULT([$CYTHON_PLIST_INCLUDE_DIR])
@@ -185,19 +167,19 @@ else
   AC_SUBST(ssl_requires)
 fi
 
-AC_ARG_ENABLE([debug-code],
-            [AS_HELP_STRING([--enable-debug-code],
-            [enable debug message reporting in library (default is no)])],
+AC_ARG_ENABLE([debug],
+            [AS_HELP_STRING([--enable-debug],
+            [build debug message output code (default is no)])],
             [no_debug_code=false],
             [no_debug_code=true])
 if test "$no_debug_code" = true; then
 	building_debug_code=no
-	AC_DEFINE(STRIP_DEBUG_CODE,1,[Strip debug reporting code])
+	AC_DEFINE(STRIP_DEBUG_CODE,1,[Define if debug message output code should not be built.])
 else
 	building_debug_code=yes
 fi
 
-AS_COMPILER_FLAGS(GLOBAL_CFLAGS, "-Wall -Wextra -Wmissing-declarations -Wredundant-decls -Wshadow -Wpointer-arith  -Wwrite-strings -Wswitch-default -Wno-unused-parameter -fsigned-char -fvisibility=hidden")
+AS_COMPILER_FLAGS(GLOBAL_CFLAGS, "-Wall -Wextra -Wmissing-declarations -Wredundant-decls -Wshadow -Wpointer-arith -Wwrite-strings -Wswitch-default -Wno-unused-parameter -fsigned-char -fvisibility=hidden")
 AC_SUBST(GLOBAL_CFLAGS)
 
 case "$GLOBAL_CFLAGS" in
