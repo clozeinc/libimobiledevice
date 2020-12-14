@@ -56,6 +56,9 @@
 #include <windows.h>
 #include <conio.h>
 #define sleep(x) Sleep(x*1000)
+#ifndef ELOOP
+#define ELOOP 114
+#endif
 #else
 #include <termios.h>
 #include <sys/statvfs.h>
@@ -548,9 +551,11 @@ static int write_restore_applications(plist_t info_plist, afc_client_t afc)
 	uint32_t applications_plist_xml_length = 0;
 
 	plist_t applications_plist = plist_dict_get_item(info_plist, "Applications");
-	if (applications_plist) {
-		plist_to_xml(applications_plist, &applications_plist_xml, &applications_plist_xml_length);
+	if (!applications_plist) {
+		printf("No Applications in Info.plist, skipping creation of RestoreApplications.plist\n");
+		return 0;
 	}
+	plist_to_xml(applications_plist, &applications_plist_xml, &applications_plist_xml_length);
 	if (!applications_plist_xml) {
 		printf("Error preparing RestoreApplications.plist\n");
 		goto leave;
@@ -739,8 +744,18 @@ static int errno_to_device_error(int errno_value)
 			return -6;
 		case EEXIST:
 			return -7;
+		case ENOTDIR:
+			return -8;
+		case EISDIR:
+			return -9;
+		case ELOOP:
+			return -10;
+		case EIO:
+			return -11;
+		case ENOSPC:
+			return -15;
 		default:
-			return -errno_value;
+			return -1;
 	}
 }
 
@@ -2261,6 +2276,11 @@ checkpoint:
 					plist_t freespace_item = plist_new_uint(freespace);
 					mobilebackup2_send_status_response(mobilebackup2, res, NULL, freespace_item);
 					plist_free(freespace_item);
+				} else if (!strcmp(dlmsg, "DLMessagePurgeDiskSpace")) {
+					/* device wants to purge disk space on the host - not supported */
+					plist_t empty_dict = plist_new_dict();
+					err = mobilebackup2_send_status_response(mobilebackup2, -1, "Operation not supported", empty_dict);
+					plist_free(empty_dict);
 				} else if (!strcmp(dlmsg, "DLContentsOfDirectory")) {
 					/* list directory contents */
 					mb2_handle_list_directory(mobilebackup2, message, backup_directory);
