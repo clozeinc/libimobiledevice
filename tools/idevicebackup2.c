@@ -1183,7 +1183,7 @@ static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_
 		if (f) {
 		    if(writeFiltered && writeContent) {
 		    	char *format_size = string_format_size(totalLen);
-            	PRINT_VERBOSE(1, "Received '%s' (%s)\n", filterFile, format_size);
+            	PRINT_VERBOSE(1, "\nReceived '%s' (%s)\n", filterFile, format_size);
             	free(format_size);
                 fflush(stdout);
 		    }
