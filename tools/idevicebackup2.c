@@ -1028,7 +1028,7 @@ static int mb2_receive_filename(mobilebackup2_client_t mobilebackup2, char** fil
 	return nlen;
 }
 
-static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_t message, const char *backup_dir)
+static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_t message, const char *backup_dir, const char **writeFiles, int writeCnt)
 {
 	uint64_t backup_real_size = 0;
 	uint64_t backup_total_size = 0;
@@ -1073,6 +1073,34 @@ static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_
 			break;
 		}
 
+        int writeContent = 1;
+        int writeFiltered = 0;
+        const char *filterFile;
+
+        if(writeCnt) {
+            writeContent = 0;
+            writeFiltered = 1;
+
+            for(int wi = 0; wi < writeCnt; wi++) {
+                const char *writeFile = writeFiles[wi];
+                int writeLen = strlen(writeFile);
+                int fileLen = strlen(fname);
+                int offset = fileLen-writeLen;
+
+                // Compare the end of the filename to our list of files that need to match
+
+                if((offset > 0) && (fname[offset-1] == '/') && (strcmp(fname+offset, writeFile) == 0)) {
+                    writeContent = 1;
+                    filterFile = writeFile;
+                    break;
+                } else if((offset == 0) && (strcmp(fname, writeFile) == 0)) {
+                    writeContent = 1;
+                    filterFile = writeFile;
+                    break;
+                }
+            }
+        }
+
 		if (bname != NULL) {
 			free(bname);
 			bname = NULL;
@@ -1108,6 +1136,8 @@ static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_
 			PRINT_VERBOSE(1, "Found new flag %02x\n", code);
 		}
 
+        uint64_t totalLen = 0;
+
 		remove_file(bname);
 		f = fopen(bname, "wb");
 		while (f && (code == CODE_FILE_DATA)) {
@@ -1124,7 +1154,12 @@ static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_
 				if ((int)r <= 0) {
 					break;
 				}
-				fwrite(buf, 1, r, f);
+
+                totalLen += r;
+
+				if(writeContent)
+    				fwrite(buf, 1, r, f);
+
 				bdone += r;
 			}
 			if (bdone == blocksize) {
@@ -1146,6 +1181,13 @@ static int mb2_handle_receive_files(mobilebackup2_client_t mobilebackup2, plist_
 			}
 		}
 		if (f) {
+		    if(writeFiltered && writeContent) {
+		    	char *format_size = string_format_size(totalLen);
+            	PRINT_VERBOSE(1, "Received '%s' (%s)\n", filterFile, format_size);
+            	free(format_size);
+                fflush(stdout);
+		    }
+
 			fclose(f);
 			file_count++;
 		} else {
@@ -1504,6 +1546,8 @@ int main(int argc, char *argv[])
 	plist_t info_plist = NULL;
 	plist_t opts = NULL;
 	mobilebackup2_error_t err;
+	const char* writeFiles[64];
+	int writeCnt = 0;
 
 	/* we need to exit cleanly on running backups and restores or we cause havok */
 	signal(SIGINT, clean_exit);
@@ -1526,6 +1570,15 @@ int main(int argc, char *argv[])
 				return -1;
 			}
 			udid = strdup(argv[i]);
+			continue;
+		}
+		else if (!strcmp(argv[i], "-w") || !strcmp(argv[i], "--write")) {
+			i++;
+			if (!argv[i] || !*argv[i] || writeCnt == 64) {
+				print_usage(argc, argv);
+				return -1;
+			}
+			writeFiles[writeCnt++] = strdup(argv[i]);
 			continue;
 		}
 		else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--source")) {
@@ -2256,7 +2309,7 @@ checkpoint:
 				} else if (!strcmp(dlmsg, "DLMessageUploadFiles")) {
 					/* device wants to send files to the computer */
 					mb2_set_overall_progress_from_message(message, dlmsg);
-					file_count += mb2_handle_receive_files(mobilebackup2, message, backup_directory);
+					file_count += mb2_handle_receive_files(mobilebackup2, message, backup_directory, (const char **)writeFiles, writeCnt);
 				} else if (!strcmp(dlmsg, "DLMessageGetFreeDiskSpace")) {
 					/* device wants to know how much disk space is available on the computer */
 					uint64_t freespace = 0;
