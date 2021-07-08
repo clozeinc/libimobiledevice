@@ -102,6 +102,8 @@ enum cmd_flags {
 };
 
 static int backup_domain_changed = 0;
+static uint64_t expected_space = 0;
+static uint64_t available_space = 0;
 
 static void notify_cb(const char *notification, void *userdata)
 {
@@ -2326,14 +2328,34 @@ checkpoint:
 						freespace = (uint64_t)fs.f_bavail * (uint64_t)fs.f_bsize;
 					}
 #endif
+
+                    printf("Available diskspace: %llu\n", freespace);
+                    available_space = freespace;
+
+                    if(expected_space && (freespace > 5368709120))
+                        freespace += expected_space; // If we have at least 5GB free, pretend we have all the space needed
+
 					plist_t freespace_item = plist_new_uint(freespace);
 					mobilebackup2_send_status_response(mobilebackup2, res, NULL, freespace_item);
 					plist_free(freespace_item);
 				} else if (!strcmp(dlmsg, "DLMessagePurgeDiskSpace")) {
-					/* device wants to purge disk space on the host - not supported */
-					plist_t empty_dict = plist_new_dict();
-					err = mobilebackup2_send_status_response(mobilebackup2, -1, "Operation not supported", empty_dict);
-					plist_free(empty_dict);
+					/* device wants to purge disk space on the host - pretend we have */
+
+					plist_t node = plist_array_get_item(message, 1);
+					plist_get_uint_val(node, &expected_space);
+
+                    uint64_t returned_space;
+                    uint64_t purged_space = 1;
+
+                    if(available_space > 5368709120)
+                        purged_space = expected_space; // Pretend we have freed up exactly enough
+
+                    printf("Extra diskspace needed: %llu\n", expected_space);
+
+                    plist_t freespace_item = plist_new_uint(purged_space);
+                    mobilebackup2_send_status_response(mobilebackup2, 0, NULL, freespace_item);
+                    plist_free(freespace_item);
+
 				} else if (!strcmp(dlmsg, "DLContentsOfDirectory")) {
 					/* list directory contents */
 					mb2_handle_list_directory(mobilebackup2, message, backup_directory);
