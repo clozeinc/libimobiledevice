@@ -105,6 +105,9 @@ static int backup_domain_changed = 0;
 static uint64_t expected_space = 0;
 static uint64_t available_space = 0;
 
+// Minimum allowed free space when checking what's available: 5GB
+static uint64_t min_free_space = 5368709120;
+
 static void notify_cb(const char *notification, void *userdata)
 {
 	if (strlen(notification) == 0) {
@@ -1583,6 +1586,17 @@ int main(int argc, char *argv[])
 			writeFiles[writeCnt++] = strdup(argv[i]);
 			continue;
 		}
+		else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--free")) {
+			i++;
+			if (!argv[i] || !*argv[i]) {
+				print_usage(argc, argv);
+				return -1;
+			}
+
+			char *endChar;
+			min_free_space = strtoull(argv[i], &endChar, 10);
+			continue;
+		}
 		else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--source")) {
 			i++;
 			if (!argv[i] || !*argv[i]) {
@@ -2330,10 +2344,15 @@ checkpoint:
 #endif
 
                     printf("Available diskspace: %llu\n", freespace);
+                    printf("Minimum diskspace: %llu\n", min_free_space);
+
                     available_space = freespace;
 
-                    if(expected_space && (freespace > 5368709120))
+                    if(expected_space && (freespace > min_free_space))
+                    {
                         freespace += expected_space; // If we have at least 5GB free, pretend we have all the space needed
+                        printf("Returned diskspace: %llu\n", freespace);
+                    }
 
 					plist_t freespace_item = plist_new_uint(freespace);
 					mobilebackup2_send_status_response(mobilebackup2, res, NULL, freespace_item);
@@ -2344,10 +2363,9 @@ checkpoint:
 					plist_t node = plist_array_get_item(message, 1);
 					plist_get_uint_val(node, &expected_space);
 
-                    uint64_t returned_space;
                     uint64_t purged_space = 1;
 
-                    if(available_space > 5368709120)
+                    if(available_space > min_free_space)
                         purged_space = expected_space; // Pretend we have freed up exactly enough
 
                     printf("Extra diskspace needed: %llu\n", expected_space);
