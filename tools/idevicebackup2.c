@@ -1522,6 +1522,8 @@ static void print_usage(int argc, char **argv, int is_error)
 		"OPTIONS:\n"
 		"  -u, --udid UDID       target specific device by UDID\n"
 		"  -s, --source UDID     use backup data from device specified by UDID\n"
+		"  -w, --write <file>    write only this file (-w can be repeated more than once)\n"
+		"  -f, --free <size>     how much free space should we assume is needed\n"
 		"  -n, --network         connect to network device\n"
 		"  -i, --interactive     request passwords interactively\n"
 		"  -d, --debug           enable communication debugging\n"
@@ -1581,6 +1583,8 @@ int main(int argc, char *argv[])
 		{ "help", no_argument, NULL, 'h' },
 		{ "udid", required_argument, NULL, 'u' },
 		{ "source", required_argument, NULL, 's' },
+		{ "write", required_argument, NULL, 'w' },
+		{ "free", required_argument, NULL, 'f' },
 		{ "interactive", no_argument, NULL, 'i' },
 		{ "network", no_argument, NULL, 'n' },
 		{ "version", no_argument, NULL, 'v' },
@@ -1610,7 +1614,7 @@ int main(int argc, char *argv[])
 #endif
 
 	/* parse cmdline args */
-	while ((c = getopt_long(argc, argv, "dhu:s:inv", longopts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "dhu:s:w:f:inv", longopts, NULL)) != -1) {
 		switch (c) {
 		case 'd':
 			idevice_set_debug_level(1);
@@ -1630,6 +1634,24 @@ int main(int argc, char *argv[])
 				return 2;
 			}
 			source_udid = strdup(optarg);
+			break;
+		case 'w':
+			if (!*optarg) {
+				fprintf(stderr, "ERROR: write file argument must not be empty!\n");
+				print_usage(argc, argv, 1);
+				return 2;
+			}
+			writeFiles[writeCnt++] = strdup(optarg);
+			break;
+		case 'f':
+			if (!*optarg) {
+				fprintf(stderr, "ERROR: freespace argument must not be empty!\n");
+				print_usage(argc, argv, 1);
+				return 2;
+			}
+            char *endChar;
+            min_free_space = strtoull(optarg, &endChar, 10);
+			break;
 		case 'i':
 			interactive_mode = 1;
 			break;
@@ -1799,7 +1821,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	idevice_t device = NULL;
 	ret = idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_USBMUX | IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX);
 	if (ret != IDEVICE_E_SUCCESS) {
 		if (udid) {
@@ -2612,6 +2633,8 @@ checkpoint:
 					}
 					break;
 				}
+				else
+				    printf("WARNING Unregcognized command %s\n", dlmsg);
 
 				/* print status */
 				if ((overall_progress > 0) && !progress_finished) {
