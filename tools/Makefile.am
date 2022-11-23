@@ -50,7 +50,7 @@ idevicename_LDADD = $(top_builddir)/src/libimobiledevice-1.0.la
 idevicewifi_SOURCES = idevicewifi.c
 idevicewifi_CFLAGS = $(AM_CFLAGS)
 idevicewifi_LDFLAGS = $(top_builddir)/common/libinternalcommon.la $(AM_LDFLAGS)
-idevicewifi_LDADD = $(top_builddir)/src/libimobiledevice.la
+idevicewifi_LDADD = $(top_builddir)/src/libimobiledevice-1.0.la
 
 idevicepair_SOURCES = idevicepair.c
 idevicepair_CFLAGS = $(AM_CFLAGS) $(ssl_lib_CFLAGS)
