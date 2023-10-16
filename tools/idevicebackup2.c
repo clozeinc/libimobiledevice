@@ -962,7 +962,7 @@ static void mb2_handle_send_files(mobilebackup2_client_t mobilebackup2, plist_t 
     			printf("Error when sending file '%s' to device (%d)\n", str, errCode);
 
                 if(errplist)
-                    plist_print_to_stream(errplist, stdout);
+                    plist_write_to_stream(errplist, stdout, PLIST_FORMAT_XML, 0);
 
                 fflush(stdout);
             }
