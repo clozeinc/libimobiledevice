@@ -81,7 +81,7 @@ static int extract_raw_crash_report(const char* filename)
 	strcpy(p, ".crash");
 
 	/* read plist crash report */
-	if (plist_read_from_filename(&report, filename)) {
+	if (plist_read_from_file(filename, &report, NULL)) {
 		plist_t description_node = plist_dict_get_item(report, "description");
 		if (description_node && plist_get_node_type(description_node) == PLIST_STRING) {
 			plist_get_string_val(description_node, &raw);
@@ -163,7 +163,7 @@ static int afc_client_copy_and_remove_crash_reports(afc_client_t afc, const char
 		char* p = strrchr(list[k], '.');
 		if (p != NULL && !strncmp(p, ".synced", 7)) {
 			/* make sure to strip ".synced" extension as seen on iOS 5 */
-			int newlen = strlen(list[k]) - 7;
+			size_t newlen = p - list[k];
 			strncpy(((char*)target_filename) + host_directory_length, list[k], newlen);
 			target_filename[host_directory_length + newlen] = '\0';
 		} else {

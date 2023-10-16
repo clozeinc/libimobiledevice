@@ -46,7 +46,7 @@
 #include <libimobiledevice/notification_proxy.h>
 #include <libimobiledevice/mobile_image_mounter.h>
 #include <asprintf.h>
-#include <libimobiledevice-glue/utils.h>
+#include <plist/plist.h>
 
 static int list_mode = 0;
 static int use_network = 0;
@@ -143,15 +143,6 @@ static void parse_opts(int argc, char **argv)
 	}
 }
 
-static void print_xml(plist_t node)
-{
-	char *xml = NULL;
-	uint32_t len = 0;
-	plist_to_xml(node, &xml, &len);
-	if (xml)
-		puts(xml);
-}
-
 static ssize_t mim_upload_cb(void* buf, size_t size, void* userdata)
 {
 	return fread(buf, 1, size, (FILE*)userdata);
@@ -224,6 +215,20 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (product_version_major == 16) {
+		uint8_t dev_mode_status = 0;
+		plist_t val = NULL;
+		ldret = lockdownd_get_value(lckd, "com.apple.security.mac.amfi", "DeveloperModeStatus", &val);
+		if (ldret == LOCKDOWN_E_SUCCESS) {
+			plist_get_bool_val(val, &dev_mode_status);
+			plist_free(val);
+		}
+		if (!dev_mode_status) {
+			printf("ERROR: You have to enable Developer Mode on the given device in order to allowing mounting a developer disk image.\n");
+			goto leave;
+		}
+	}
+
 	lockdownd_start_service(lckd, "com.apple.mobile.mobile_image_mounter", &service);
 
 	if (!service || service->port == 0) {
@@ -283,11 +288,7 @@ int main(int argc, char **argv)
 		err = mobile_image_mounter_lookup_image(mim, imagetype, &result);
 		if (err == MOBILE_IMAGE_MOUNTER_E_SUCCESS) {
 			res = 0;
-			if (xml_mode) {
-				print_xml(result);
-			} else {
-				plist_print_to_stream(result, stdout);
-			}
+			plist_write_to_stream(result, stdout, (xml_mode) ? PLIST_FORMAT_XML : PLIST_FORMAT_LIMD, 0);
 		} else {
 			printf("Error: lookup_image returned %d\n", err);
 		}
@@ -415,20 +416,12 @@ int main(int argc, char **argv)
 							res = 0;
 						} else {
 							printf("unexpected status value:\n");
-							if (xml_mode) {
-								print_xml(result);
-							} else {
-								plist_print_to_stream(result, stdout);
-							}
+							plist_write_to_stream(result, stdout, (xml_mode) ? PLIST_FORMAT_XML : PLIST_FORMAT_LIMD, 0);
 						}
 						free(status);
 					} else {
 						printf("unexpected result:\n");
-						if (xml_mode) {
-							print_xml(result);
-						} else {
-							plist_print_to_stream(result, stdout);
-						}
+						plist_write_to_stream(result, stdout, (xml_mode) ? PLIST_FORMAT_XML : PLIST_FORMAT_LIMD, 0);
 					}
 				}
 				node = plist_dict_get_item(result, "Error");
@@ -440,19 +433,11 @@ int main(int argc, char **argv)
 						free(error);
 					} else {
 						printf("unexpected result:\n");
-						if (xml_mode) {
-							print_xml(result);
-						} else {
-							plist_print_to_stream(result, stdout);
-						}
+						plist_write_to_stream(result, stdout, (xml_mode) ? PLIST_FORMAT_XML : PLIST_FORMAT_LIMD, 0);
 					}
 
 				} else {
-					if (xml_mode) {
-						print_xml(result);
-					} else {
-						plist_print_to_stream(result, stdout);
-					}
+					plist_write_to_stream(result, stdout, (xml_mode) ? PLIST_FORMAT_XML : PLIST_FORMAT_LIMD, 0);
 				}
 			}
 		} else {
