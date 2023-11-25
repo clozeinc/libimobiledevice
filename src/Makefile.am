@@ -51,6 +51,7 @@ libimobiledevice_1_0_la_SOURCES = \
 	restore.c restore.h \
 	diagnostics_relay.c diagnostics_relay.h \
 	heartbeat.c heartbeat.h \
+	power.c power.h \
 	debugserver.c debugserver.h \
 	webinspector.c webinspector.h \
 	mobileactivation.c mobileactivation.h \

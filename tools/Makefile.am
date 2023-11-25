@@ -24,6 +24,7 @@ bin_PROGRAMS = \
 	idevicedate \
 	idevicebackup \
 	idevicebackup2 \
+	idevicepower \
 	ideviceprovision \
 	idevicedebugserverproxy \
 	idevicediagnostics \
@@ -78,6 +79,11 @@ idevicebackup2_SOURCES = idevicebackup2.c
 idevicebackup2_CFLAGS = $(AM_CFLAGS) $(limd_glue_CFLAGS)
 idevicebackup2_LDFLAGS = $(AM_LDFLAGS) $(limd_glue_LIBS)
 idevicebackup2_LDADD = $(top_builddir)/src/libimobiledevice-1.0.la
+
+idevicepower_SOURCES = idevicepower.c
+idevicepower_CFLAGS = $(AM_CFLAGS) $(limd_glue_CFLAGS)
+idevicepower_LDFLAGS = $(AM_LDFLAGS) $(limd_glue_LIBS)
+idevicepower_LDADD = $(top_builddir)/src/libimobiledevice-1.0.la
 
 ideviceimagemounter_SOURCES = ideviceimagemounter.c
 ideviceimagemounter_CFLAGS = $(AM_CFLAGS) $(limd_glue_CFLAGS)
