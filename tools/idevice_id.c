@@ -31,6 +31,7 @@
 #include <getopt.h>
 #include <libimobiledevice/libimobiledevice.h>
 #include <libimobiledevice/lockdown.h>
+#include <usbmuxd.h>
 
 #define MODE_NONE 0
 #define MODE_SHOW_ID 1
@@ -86,6 +87,7 @@ int main(int argc, char **argv)
 		switch (c) {
 		case 'd':
 			idevice_set_debug_level(1);
+			libusbmuxd_set_debug_level(2);
 			break;
 		case 'h':
 			print_usage(argc, argv, 0);
