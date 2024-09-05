@@ -31,10 +31,6 @@
 #include "property_list_service.h"
 #include "common/debug.h"
 
-#ifdef WIN32
-#define sleep(x) Sleep(x*1000)
-#endif
-
 struct np_thread {
 	np_client_t client;
 	np_notify_cb_t cbfunc;
